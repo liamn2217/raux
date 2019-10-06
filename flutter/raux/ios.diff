@@ -1,0 +1,47 @@
+diff --git a/packages/flutter_tools/lib/src/ios/devices.dart b/packages/flutter_tools/lib/src/ios/devices.dart
+index c55cb8533..c17c290da 100644
+--- a/packages/flutter_tools/lib/src/ios/devices.dart
++++ b/packages/flutter_tools/lib/src/ios/devices.dart
+@@ -103,7 +103,7 @@ class IOSDevices extends PollingDeviceDiscovery {
+   IOSDevices() : super('iOS devices');
+ 
+   @override
+-  bool get supportsPlatform => platform.isMacOS;
++  bool get supportsPlatform => true;
+ 
+   @override
+   bool get canListAnything => iosWorkflow.canListDevices;
+diff --git a/packages/flutter_tools/lib/src/ios/ios_workflow.dart b/packages/flutter_tools/lib/src/ios/ios_workflow.dart
+index c8bc17f50..2d5ba070e 100644
+--- a/packages/flutter_tools/lib/src/ios/ios_workflow.dart
++++ b/packages/flutter_tools/lib/src/ios/ios_workflow.dart
+@@ -26,7 +26,7 @@ class IOSWorkflow implements Workflow {
+ 
+   // We need xcode (+simctl) to list simulator devices, and libimobiledevice to list real devices.
+   @override
+-  bool get canListDevices => xcode.isInstalledAndMeetsVersionCheck && xcode.isSimctlInstalled;
++  bool get canListDevices => iMobileDevice.isInstalled || (xcode.isInstalledAndMeetsVersionCheck && xcode.isSimctlInstalled);
+ 
+   // We need xcode to launch simulator devices, and ideviceinstaller and ios-deploy
+   // for real devices.
+diff --git a/packages/flutter_tools/lib/src/ios/mac.dart b/packages/flutter_tools/lib/src/ios/mac.dart
+index 845a6961f..c45a57bf7 100644
+--- a/packages/flutter_tools/lib/src/ios/mac.dart
++++ b/packages/flutter_tools/lib/src/ios/mac.dart
+@@ -124,8 +124,14 @@ class IMobileDevice {
+   Future<String> getAvailableDeviceIDs() async {
+     try {
+       final ProcessResult result = await processManager.run(<String>['idevice_id', '-l']);
+-      if (result.exitCode != 0)
+-        throw ToolExit('idevice_id returned an error:\n${result.stderr}');
++      if (result.exitCode != 0) {
++        if (result.stderr.toString().contains('ERROR: Unable to retrieve device list!')) {
++          // idevice_id might throw this error if there are no connected devices
++          return '';
++        } else {
++          throw ToolExit('idevice_id returned an error:\n${result.stderr}');
++        }
++      }
+       return result.stdout;
+     } on ProcessException {
+       throw ToolExit('Failed to invoke idevice_id. Run flutter doctor.');
